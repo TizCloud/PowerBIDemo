@@ -1,0 +1,171 @@
+>> Salesperson table definition
+==================================================
+Salesperson =
+'Salesperson (Performance)'
+
+
+>> Date table definition
+==================================================
+Date =
+CALENDARAUTO(6)
+
+
+>> Date table: Year column definition
+==================================================
+Year =
+"FY" & YEAR('Date'[Date]) + IF(MONTH('Date'[Date]) > 6, 1)
+
+
+>> Date table: Quarter column definition
+==================================================
+Quarter =
+'Date'[Year] & " Q"
+    & IF(
+        MONTH('Date'[Date]) <= 3,
+        3,
+        IF(
+            MONTH('Date'[Date]) <= 6,
+            4,
+            IF(
+                MONTH('Date'[Date]) <= 9,
+                1,
+                2
+            )
+        )
+    )
+
+
+
+>> Date table: Month column definition
+==================================================
+Month =
+FORMAT('Date'[Date], "yyyy MMM")
+
+
+>> Date table: MonthKey column definition
+==================================================
+MonthKey =
+(YEAR('Date'[Date]) * 100) + MONTH('Date'[Date])
+
+
+>> Sales table: Avg Price measure definition
+==================================================
+Avg Price =
+AVERAGE(Sales[Unit Price])
+
+
+>> Sales table: Additional measure definitions (use one definition at a time)
+==================================================
+Median Price =
+MEDIAN(Sales[Unit Price])
+
+Min Price =
+MIN(Sales[Unit Price])
+
+Max Price =
+MAX(Sales[Unit Price])
+
+Orders =
+DISTINCTCOUNT(Sales[SalesOrderNumber])
+
+Order Lines =
+COUNTROWS(Sales)
+
+>> Targets table: Target measure definition
+==================================================
+Target =
+IF(
+	HASONEVALUE('Salesperson (Performance)'[Salesperson]),
+	SUM(Targets[TargetAmount])
+)
+
+
+>> Targets table: Variance measure definition
+==================================================
+Variance =
+IF(
+	HASONEVALUE('Salesperson (Performance)'[Salesperson]),
+	SUM(Sales[Sales]) - [Target]
+)
+
+
+>> Targets table: Variance Margin measure definition
+==================================================
+Variance Margin =
+DIVIDE([Variance], [Target])
+
+
+++++++++ LAB 5 ++++++++++++++++++++++++++++++++++++
+
+>> Sales All Region measure definition
+==================================================
+Sales All Region =
+CALCULATE(SUM(Sales[Sales]), REMOVEFILTERS(Region))
+
+
+>> Sales % All Region measure definition (replace Sales All Region measure)
+==================================================
+Sales % All Region =
+DIVIDE(
+	SUM(Sales[Sales]),
+	CALCULATE(
+		SUM(Sales[Sales]),
+		REMOVEFILTERS(Region)
+	)
+)
+
+>> Sales % Country measure definition (2)
+==================================================
+Sales % Country =
+IF(
+	ISINSCOPE(Region[Region]),
+	DIVIDE(
+		SUM(Sales[Sales]),
+		CALCULATE(
+			SUM(Sales[Sales]),
+			REMOVEFILTERS(Region[Region])
+		)
+	)
+)
+
+
+>> Sales % Group measure definition (2)
+==================================================
+Sales % Group =
+IF(
+	ISINSCOPE(Region[Region])
+		|| ISINSCOPE(Region[Country]),
+	DIVIDE(
+		SUM(Sales[Sales]),
+		CALCULATE(
+			SUM(Sales[Sales]),
+			REMOVEFILTERS(
+				Region[Region],
+				Region[Country]
+			)
+		)
+	)
+)
+
+>> Sales table: Sales YTD measure definition
+==================================================
+Sales YTD =
+TOTALYTD(SUM(Sales[Sales]), 'Date'[Date], "6-30")
+
+>> Sales table: Sales YoY Growth (2)
+==================================================
+Sales YoY Growth =
+VAR SalesPriorYear =
+	CALCULATE(
+		SUM(Sales[Sales]),
+		PARALLELPERIOD(
+			'Date'[Date],
+			-12,
+			MONTH
+		)
+	)
+RETURN
+	DIVIDE(
+		(SUM(Sales[Sales]) - SalesPriorYear),
+		SalesPriorYear
+	)
